@@ -4,6 +4,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.audit import record_audit_event
 from app.database import get_session
 from app.models import AnalysisResult, MeasurementPlan, SimulationRun
 from app.schemas import SimulationRunInput
@@ -68,7 +69,7 @@ def get_demo_scenario(scenario: str) -> dict[str, object]:
 def create_simulation_run(
     plan_id: str,
     payload: SimulationRunInput,
-    _: AnalystAccess,
+    actor: AnalystAccess,
     session: Session = Depends(get_session),
 ) -> dict[str, object]:
     plan = session.get(MeasurementPlan, plan_id)
@@ -93,5 +94,31 @@ def create_simulation_run(
         results=summary["result"],
     )
     session.add(analysis)
+    session.flush()
+    record_audit_event(
+        session,
+        actor,
+        action="simulation_run.generated",
+        entity_type="simulation_run",
+        entity_id=run.id,
+        initiative_id=plan.initiative_id,
+        plan_id=plan.id,
+        details={
+            "scenario": payload.scenario,
+            "seed": payload.seed,
+            "generator_version": GENERATOR_VERSION,
+            "dataset_sha256": summary["dataset_manifest"]["sha256"],
+        },
+    )
+    record_audit_event(
+        session,
+        actor,
+        action="analysis_result.created",
+        entity_type="analysis_result",
+        entity_id=analysis.id,
+        initiative_id=plan.initiative_id,
+        plan_id=plan.id,
+        details={"analysis_version": analysis.analysis_version, "simulation_run_id": run.id},
+    )
     session.commit()
     return {"id": run.id, "analysis_result_id": analysis.id, **summary}

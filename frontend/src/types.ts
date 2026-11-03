@@ -161,6 +161,19 @@ export type WorkspaceMemo = MemoReviewDetails & {
   reviewed_at: string | null
 }
 
+export type WorkspaceAuditEvent = {
+  id: number
+  actor_username: string
+  actor_role: 'analyst' | 'reviewer'
+  action: string
+  entity_type: string
+  entity_id: string
+  initiative_id: string | null
+  plan_id: string | null
+  details: Record<string, unknown>
+  created_at: string
+}
+
 export type WorkspaceSnapshot = {
   user: { username: string; role: 'analyst' | 'reviewer' }
   initiatives: WorkspaceInitiative[]
@@ -168,4 +181,5 @@ export type WorkspaceSnapshot = {
   design_runs: WorkspaceDesignRun[]
   simulation_runs: WorkspaceSimulationRun[]
   memos: WorkspaceMemo[]
+  audit_events: WorkspaceAuditEvent[]
 }

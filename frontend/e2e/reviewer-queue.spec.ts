@@ -21,6 +21,7 @@ test('reviewer inspects linked estimates and approves a queued memo', async ({ b
 
   await page.getByRole('button', { name: 'Mark reviewed' }).click()
   await expect(page.locator('.reviewed-tag')).toHaveText('reviewed')
+  await expect(page.locator('.audit-trail')).toContainText('decision memo reviewed')
   await expect(queuedMemo).toHaveCount(0)
   await context.close()
 })

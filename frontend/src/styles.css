@@ -458,6 +458,14 @@ h2 { margin: 0; color: #24352b; font-size: 20px; line-height: 1.25; font-weight:
 .queue-item strong { margin-bottom: 4px; color: #3d5143; font-size: 9px; text-transform: capitalize; }
 .queue-item small { color: #849087; font-family: var(--mono); font-size: 7px; overflow-wrap: anywhere; }
 .queue-item > svg { flex: 0 0 auto; }
+.audit-trail { display: grid; grid-column: 1 / -1; gap: 7px; padding-top: 10px; border-top: 1px solid #e8ece6; }
+.audit-trail ol { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.audit-trail li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #f0f2ee; }
+.audit-trail li > span, .audit-trail li strong, .audit-trail li small { display: block; min-width: 0; }
+.audit-trail li strong { color: #45554a; font-size: 9px; text-transform: capitalize; }
+.audit-trail li small, .audit-actor { color: #849087; font-family: var(--mono); font-size: 7px; overflow-wrap: anywhere; }
+.audit-actor { flex: 0 0 auto; text-align: right; }
+.audit-actor time { display: block; margin-top: 3px; }
 .queue-empty { grid-column: 1 / -1; margin: 0; color: #859087; font-size: 8px; }
 .workspace-message { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 9px 11px; border-left: 2px solid #52805d; background: #edf5ed; color: #45634b; font-size: 9px; overflow-wrap: anywhere; }
 .workspace-message:has(+ .workspace-step-grid) { min-height: 33px; }

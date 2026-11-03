@@ -223,6 +223,15 @@ def test_public_client_cannot_read_analyst_workspace(monkeypatch: pytest.MonkeyP
 def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authorized_client: TestClient) -> None:
     _, plan_id = create_frozen_plan(authorized_client)
 
+    audit_response = authorized_client.get("/api/workspace")
+    audit_events = audit_response.json()["audit_events"]
+    assert [event["action"] for event in reversed(audit_events)] == [
+        "initiative.created",
+        "plan.created",
+        "plan.frozen",
+    ]
+    assert all(event["actor_username"] == "test-analyst" for event in audit_events)
+
     assert authorized_client.post(f"/api/plans/{plan_id}/freeze").status_code == 409
     design = authorized_client.post(
         f"/api/plans/{plan_id}/design-runs",
@@ -231,6 +240,8 @@ def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authori
     assert design.status_code == 201
     assert design.json()["results"]["baseline_rate"] == 0.10
     assert design.json()["results"]["target_effect"] == 0.01
+    design_audit = authorized_client.get("/api/workspace").json()["audit_events"]
+    assert any(event["action"] == "design_run.created" and event["entity_id"] == design.json()["id"] for event in design_audit)
 
     simulation = authorized_client.post(
         f"/api/plans/{plan_id}/simulation-runs",
@@ -240,6 +251,9 @@ def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authori
     assert simulation.json()["plan_reference"] == {"plan_id": plan_id, "version": 1, "status": "frozen"}
     assert simulation.json()["dataset_manifest"]["synthetic"] is True
     assert simulation.json()["dataset_manifest"]["scenario_config_version"] == "game-discovery-scenarios-v3"
+    simulation_audit = authorized_client.get("/api/workspace").json()["audit_events"]
+    assert any(event["action"] == "simulation_run.generated" and event["entity_id"] == simulation.json()["id"] for event in simulation_audit)
+    assert any(event["action"] == "analysis_result.created" and event["entity_id"] == simulation.json()["analysis_result_id"] for event in simulation_audit)
 
     _, other_plan_id = create_frozen_plan(authorized_client)
     other_simulation = authorized_client.post(
@@ -270,6 +284,8 @@ def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authori
     )
     assert memo.status_code == 201
     assert memo.json()["review_state"] == "draft"
+    memo_audit = authorized_client.get("/api/workspace").json()["audit_events"]
+    assert any(event["action"] == "decision_memo.drafted" and event["entity_id"] == memo.json()["id"] for event in memo_audit)
 
     analyst_workspace = authorized_client.get("/api/workspace")
     assert analyst_workspace.status_code == 200
@@ -300,6 +316,11 @@ def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authori
     )
     assert reviewed.status_code == 200
     assert reviewed.json()["review_state"] == "reviewed"
+    reviewed_audit = authorized_client.get("/api/workspace").json()["audit_events"]
+    review_event = next(event for event in reviewed_audit if event["action"] == "decision_memo.reviewed")
+    assert review_event["entity_id"] == memo.json()["id"]
+    assert review_event["actor_username"] == "test-reviewer"
+    assert review_event["actor_role"] == "reviewer"
     assert authorized_client.post(
         f"/api/memos/{memo.json()['id']}/review",
         headers={"X-CSRF-Token": reviewer_session["csrf_token"]},

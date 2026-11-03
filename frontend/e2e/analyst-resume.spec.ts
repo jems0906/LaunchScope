@@ -26,6 +26,7 @@ test('analyst creates a frozen evaluation and resumes it after reload', async ({
   await page.getByLabel('Rationale').fill('The primary movement and guardrail tradeoff require redesign and another fixed-horizon evaluation.')
   await page.getByRole('button', { name: 'Save memo draft' }).click()
   await expect(page.getByText(/saved as a draft/)).toBeVisible()
+  await expect(page.locator('.audit-trail')).toContainText('decision memo drafted')
   await page.reload()
   await expect(page.getByLabel('Resume plan version')).toBeVisible()
 
@@ -34,4 +35,5 @@ test('analyst creates a frozen evaluation and resumes it after reload', async ({
   await savedPlan.selectOption({ label: `${title} · v1 · frozen` })
   await expect(page.getByText(`Resumed frozen plan v1 for ${title}.`)).toBeVisible()
   await expect(page.locator('.workspace-step').nth(2).getByText(/primary difference/)).toBeVisible()
+  await expect(page.locator('.audit-trail')).toContainText('simulation run generated')
 })

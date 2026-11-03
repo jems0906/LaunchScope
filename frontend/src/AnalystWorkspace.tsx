@@ -274,6 +274,15 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
           {workspace.memos.filter((item) => item.review_state === 'draft').map((item) => <button className="queue-item" key={item.id} onClick={() => void openMemo(item.id)}><span><strong>{item.recommendation.replaceAll('_', ' ')}</strong><small>{item.id} · plan {item.plan_id}</small></span><ChevronRight size={14} /></button>)}
           {workspace.memos.every((item) => item.review_state !== 'draft') && <p className="queue-empty">No pending memos.</p>}
         </>}
+        <section className="audit-trail" aria-label="Audit trail">
+          <div className="review-queue-head"><strong>Recent activity</strong><span>{workspace.audit_events.length}</span></div>
+          {workspace.audit_events.length ? <ol>
+            {workspace.audit_events.slice(0, 12).map((event) => <li key={event.id}>
+              <span><strong>{event.action.replaceAll('.', ' ')}</strong><small>{event.entity_type} · {event.entity_id}</small></span>
+              <span className="audit-actor">{event.actor_username} · {event.actor_role}<time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time></span>
+            </li>)}
+          </ol> : <p className="queue-empty">No recorded activity.</p>}
+        </section>
       </div>}
 
       {session.role === 'analyst' ? (

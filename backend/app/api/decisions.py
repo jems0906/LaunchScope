@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.audit import record_audit_event
 from app.database import get_session
 from app.models import AnalysisResult, DecisionMemo, MeasurementPlan, SimulationRun, now_utc
 from app.schemas import MemoCreate
@@ -36,7 +37,7 @@ def get_memo(
 def create_memo(
     plan_id: str,
     payload: MemoCreate,
-    _: AnalystAccess,
+    actor: AnalystAccess,
     session: Session = Depends(get_session),
 ) -> dict[str, object]:
     plan = session.get(MeasurementPlan, plan_id)
@@ -58,6 +59,17 @@ def create_memo(
         review_state="draft",
     )
     session.add(memo)
+    session.flush()
+    record_audit_event(
+        session,
+        actor,
+        action="decision_memo.drafted",
+        entity_type="decision_memo",
+        entity_id=memo.id,
+        initiative_id=plan.initiative_id,
+        plan_id=plan.id,
+        details={"recommendation": memo.recommendation, "analysis_result_id": analysis.id},
+    )
     session.commit()
     session.refresh(memo)
     return {"id": memo.id, "plan_id": plan_id, "review_state": memo.review_state}
@@ -66,7 +78,7 @@ def create_memo(
 @router.post("/memos/{memo_id}/review")
 def review_memo(
     memo_id: str,
-    _: ReviewerAccess,
+    actor: ReviewerAccess,
     session: Session = Depends(get_session),
 ) -> dict[str, object]:
     memo = session.get(DecisionMemo, memo_id)
@@ -76,5 +88,14 @@ def review_memo(
         raise HTTPException(status_code=409, detail="Memo has already been reviewed")
     memo.review_state = "reviewed"
     memo.reviewed_at = now_utc()
+    record_audit_event(
+        session,
+        actor,
+        action="decision_memo.reviewed",
+        entity_type="decision_memo",
+        entity_id=memo.id,
+        plan_id=memo.plan_id,
+        details={"analysis_result_id": memo.analysis_result_id, "reviewed_at": memo.reviewed_at.isoformat()},
+    )
     session.commit()
     return {"id": memo.id, "review_state": memo.review_state, "reviewed_at": memo.reviewed_at}

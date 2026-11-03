@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_session
 from app.models import (
     AnalysisResult,
+    AuditEvent,
     DecisionMemo,
     DesignRun,
     Initiative,
@@ -27,6 +28,9 @@ def get_workspace(
     simulation_runs = session.scalars(select(SimulationRun).order_by(SimulationRun.created_at.desc())).all()
     analyses = session.scalars(select(AnalysisResult)).all()
     memos = session.scalars(select(DecisionMemo).order_by(DecisionMemo.created_at.desc())).all()
+    audit_events = session.scalars(
+        select(AuditEvent).order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc()).limit(200)
+    ).all()
 
     initiatives_by_id = {initiative.id: initiative for initiative in initiatives}
     analyses_by_id = {analysis.id: analysis for analysis in analyses}
@@ -104,5 +108,20 @@ def get_workspace(
                 else None,
             }
             for memo in memos
+        ],
+        "audit_events": [
+            {
+                "id": audit_event.id,
+                "actor_username": audit_event.actor_username,
+                "actor_role": audit_event.actor_role,
+                "action": audit_event.action,
+                "entity_type": audit_event.entity_type,
+                "entity_id": audit_event.entity_id,
+                "initiative_id": audit_event.initiative_id,
+                "plan_id": audit_event.plan_id,
+                "details": audit_event.details,
+                "created_at": audit_event.created_at,
+            }
+            for audit_event in audit_events
         ],
     }

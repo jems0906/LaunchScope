@@ -16,6 +16,8 @@ Open the application at [http://localhost:4173](http://localhost:4173). The API 
 
 The public UI is read-only until local analyst/reviewer accounts are configured. After sign-in, analysts can capture intake, save and freeze versioned plans, run sensitivity and fixed synthetic evaluations, draft memos, and resume saved initiatives and plan versions after reload. Reviewers get a pending-memo queue and can inspect linked estimates before signing off. This single-project lab shares its persisted records across configured accounts; it is not a multi-tenant service. The API uses expiring signed HttpOnly cookies, distinct analyst and reviewer roles, and CSRF tokens for writes. No auth secret is bundled into the frontend. The demo accepts no arbitrary user code, uploaded datasets, or proprietary data.
 
+Successful workflow writes append actor-attributed audit events for initiatives, plan versions and freezes, design runs, simulations, analyses, memo drafts, and reviewer sign-off. The authenticated workspace displays the latest activity. ORM guards and PostgreSQL triggers reject updates and deletes to audit events; they are intended for application-level traceability, not protection from database administrators.
+
 For local analyst access, copy `.env.example` to `.env`. Generate a signing secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"` and set `SESSION_SECRET`. From `backend`, run `python -m app.auth_admin --role analyst --username analyst`; the CLI prompts for a password without echoing it and prints `ANALYST_USERNAME` and a salted `ANALYST_PASSWORD_HASH` to add to `.env`. Repeat with `--role reviewer` for independent memo review. Then restart with `docker compose up --build`. Leave account values blank to preserve the public read-only mode. Sessions expire after eight hours; logout clears the browser cookie. For any TLS-terminated deployment, set `SESSION_COOKIE_SECURE=true`; the local Compose setup uses HTTP and defaults it to false.
 
 For a split development setup, configure the same environment variables, run the API from `backend` with `PYTHONPATH=.;vendor` and `PORT=8000`, then run `npm ci` and `npm run dev` from `frontend`. Vite proxies `/api` requests to `http://localhost:8000`.
@@ -53,12 +55,12 @@ configs/scenarios/       Fixed, versioned fictional scenario configuration
 docs/                    Decision brief, measurement tree, preregistration, sensitivity,
                          stakeholder tradeoffs, executive memo template
 docker-compose.yml       PostgreSQL + API + frontend
-.github/workflows/ci.yml Backend tests, PostgreSQL migration, frontend build, container builds
+.github/workflows/ci.yml Backend tests, PostgreSQL migrations, frontend build, container builds, browser E2E
 ```
 
 ## Verification
 
-The required test gates are defined in CI; they are not claims of Netflix validation. They include an independent sample-size reference, seeded reproducibility, household-level ITT denominators, known helpful/harmful effects, null false-positive frequency and interval coverage with Monte Carlo uncertainty bounds for both the primary outcome and clustered playback guardrail, tradeoff guardrail visibility, missing-outcome sensitivity, protected writes, and frozen-plan/memo lifecycle checks.
+The required test gates are defined in CI; they are not claims of Netflix validation. They include an independent sample-size reference, seeded reproducibility, household-level ITT denominators, known helpful/harmful effects, null false-positive frequency and interval coverage with Monte Carlo uncertainty bounds for both the primary outcome and clustered playback guardrail, tradeoff guardrail visibility, missing-outcome sensitivity, protected writes, frozen-plan/memo lifecycle and audit attribution checks, and append-only enforcement.
 
 Run the backend checks from `backend`:
 
@@ -87,4 +89,4 @@ $env:E2E_REVIEWER_PASSWORD = "<configured reviewer password>"
 npm run test:e2e
 ```
 
-The E2E suite covers public read-only restrictions, analyst create/freeze/evaluate/memo and reload/resume, and reviewer queue inspection/approval. CI uses disposable credentials and tears down its Compose volume after each run.
+The E2E suite covers public read-only restrictions, analyst create/freeze/evaluate/memo and reload/resume, reviewer queue inspection/approval, and visibility of the audit activity feed. CI uses disposable credentials and tears down its Compose volume after each run.
