@@ -13,6 +13,7 @@
 | Frontend build | PASS | 0 | `npm run build` from `frontend`: TypeScript and Vite production build succeeded |
 | Browser E2E | PASS | 0 | `npx playwright test` from `frontend`: 3 passed in 5.8 seconds |
 | Container build | PASS | 0 | `docker compose build` built API and frontend images |
+| Hosted GitHub Actions | PASS | 0 | [Run 41730880798](https://github.com/jems0906/LaunchScope/actions/runs/41730880798) on commit `8f05cd7`; backend, frontend, containers, and browser-e2e jobs succeeded |
 
 **Overall:** PASS
 
@@ -36,4 +37,4 @@ Browser tests use unique initiative titles and disposable CI credentials. The lo
 
 ## Known Gaps
 
-The GitHub Actions browser job is configured but has not yet run on GitHub-hosted CI; the same Playwright suite passed locally against Docker Compose. This is a single shared workspace, not a multi-tenant system. The Vite build reports the separately loaded Plotly bundle as larger than 500 kB (about 378 kB gzip).
+The E2E CI run passed on GitHub-hosted runners. The workflow currently provisions disposable credentials in CI; production account provisioning and secret management still require deployment-specific configuration. This is a single shared workspace, not a multi-tenant system. The Vite build reports the separately loaded Plotly bundle as larger than 500 kB (about 378 kB gzip).
