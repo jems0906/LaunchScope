@@ -1,0 +1,7 @@
+# Sensitivity Report
+
+The planner uses `statsmodels`' two-independent-proportions normal approximation with Cohen's h, two-sided testing, the stated allocation ratio, and a simple attrition adjustment. It reports required enrolled counts, the available effective arm counts after attrition, and the smallest positive detectable rate increase. If no possible positive rate increase can reach the requested power, it says so rather than returning a fabricated detectable effect. It does not account for clustering above household, covariate adjustment, unequal outcome capture mechanisms, or multiple primary outcomes.
+
+The demonstration defaults are a 10% baseline household rate, a +1 percentage-point target effect, 1:1 assignment, alpha 0.05, 80% power, and 5% attrition. These are illustrative assumptions, not empirical Netflix inputs. Changing any assumption changes the result. The sample unit is households because assignment is at household level.
+
+Required counts are compared with an independent normal-approximation calculation in tests. Seeded Monte Carlo checks assess null false-positive frequency and interval coverage for the primary outcome and clustered playback guardrail, with Wilson bounds for Monte Carlo uncertainty. Playback scenarios use beta-binomial household risk to create within-household dependence. These checks validate implementation behavior for this educational design; they do not prove that the assumptions fit a real initiative. The UI displays when a proposed available sample cannot reliably detect the practical threshold.

@@ -1,0 +1,48 @@
+{
+  "version": "game-discovery-scenarios-v3",
+  "initiative": "Fictional game-discovery module offer",
+  "baseline_rate": 0.1,
+  "eligible_playback_sessions_mean": 5,
+  "playback_risk_concentration": 49,
+  "playback_failure_definition": "One documented playback-quality failure event on an eligible playback session.",
+  "control_playback_failure_rate": 0.03,
+  "control_stability_event_rate": 0.01,
+  "control_missingness_rate": 0.02,
+  "treatment_missingness_rate": 0.025,
+  "playback_harm_margin": 0.005,
+  "stability_harm_margin": 0.005,
+  "scenarios": [
+    {
+      "id": "helpful",
+      "label": "Helpful signal",
+      "description": "A positive primary-outcome difference with no configured guardrail harm.",
+      "treatment_rate": 0.115,
+      "playback_failure_rate": 0.03,
+      "stability_event_rate": 0.01
+    },
+    {
+      "id": "null",
+      "label": "Null result",
+      "description": "No configured primary-outcome or playback-quality difference.",
+      "treatment_rate": 0.1,
+      "playback_failure_rate": 0.03,
+      "stability_event_rate": 0.01
+    },
+    {
+      "id": "harmful",
+      "label": "Harmful result",
+      "description": "A lower primary-outcome rate and elevated playback-quality events.",
+      "treatment_rate": 0.082,
+      "playback_failure_rate": 0.045,
+      "stability_event_rate": 0.015
+    },
+    {
+      "id": "tradeoff",
+      "label": "Tradeoff",
+      "description": "A higher primary-outcome rate alongside playback-quality harm.",
+      "treatment_rate": 0.115,
+      "playback_failure_rate": 0.045,
+      "stability_event_rate": 0.015
+    }
+  ]
+}
