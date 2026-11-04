@@ -15,4 +15,4 @@ COPY backend/alembic ./alembic
 COPY configs ./configs
 
 EXPOSE 8000
-CMD ["sh", "-c", "until python -c 'import socket; socket.create_connection((\"db\", 5432), timeout=2).close()'; do sleep 2; done; alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

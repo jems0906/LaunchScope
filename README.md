@@ -14,6 +14,8 @@ docker compose up --build
 
 Open the application at [http://localhost:4173](http://localhost:4173). The API health check is at [http://localhost:4173/api/health](http://localhost:4173/api/health), with interactive API documentation at [http://localhost:4173/docs](http://localhost:4173/docs). The API and database remain on the internal Compose network.
 
+For a public, read-only Railway deployment, follow [the Railway deployment guide](docs/railway-deployment.md). It keeps the API and PostgreSQL private and leaves analyst/reviewer credentials unset.
+
 The public UI is read-only until local analyst/reviewer accounts are configured. After sign-in, analysts can capture intake, save and freeze versioned plans, run sensitivity and fixed synthetic evaluations, draft memos, and resume saved initiatives and plan versions after reload. Reviewers get a pending-memo queue and can inspect linked estimates before signing off. This single-project lab shares its persisted records across configured accounts; it is not a multi-tenant service. The API uses expiring signed HttpOnly cookies, distinct analyst and reviewer roles, and CSRF tokens for writes. No auth secret is bundled into the frontend. The demo accepts no arbitrary user code, uploaded datasets, or proprietary data.
 
 Successful workflow writes append actor-attributed audit events for initiatives, plan versions and freezes, design runs, simulations, analyses, memo drafts, and reviewer sign-off. The authenticated workspace displays the latest activity. ORM guards and PostgreSQL triggers reject updates and deletes to audit events; they are intended for application-level traceability, not protection from database administrators.
