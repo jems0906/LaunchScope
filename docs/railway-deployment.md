@@ -15,6 +15,7 @@ Set these service variables on `api`:
 
 ```text
 DATABASE_URL=${{Postgres.DATABASE_URL}}
+PORT=8000
 SESSION_COOKIE_SECURE=true
 ```
 
