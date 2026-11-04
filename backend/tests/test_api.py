@@ -173,7 +173,11 @@ def test_tampered_signed_session_is_rejected(authorized_client: TestClient) -> N
     _, plan_id = create_frozen_plan(authorized_client)
     token = authorized_client.cookies.get("launchscope_session")
     assert token
-    authorized_client.cookies.set("launchscope_session", f"{token[:-1]}x")
+    encoded_payload, encoded_signature = token.split(".", maxsplit=1)
+    tampered_signature = ("A" if encoded_signature[0] != "A" else "B") + encoded_signature[1:]
+    authorized_client.cookies.set(
+        "launchscope_session", f"{encoded_payload}.{tampered_signature}"
+    )
 
     assert authorized_client.get("/api/auth/session").json() == {"authenticated": False}
     assert authorized_client.post(f"/api/plans/{plan_id}/freeze").status_code == 401
