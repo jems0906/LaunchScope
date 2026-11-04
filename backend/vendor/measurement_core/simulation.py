@@ -401,5 +401,5 @@ def analyze_dataset(
             "repeat_engagement_rate_treatment_observed": sum(int(row["repeat_engagement"] or 0) for row in treatment_rows if row["observed"]) / treatment.observed,
         },
         "warnings": warnings,
-        "analysis_version": "itt-newcombe-household-clustered-v2",
+        "analysis_version": "itt-newcombe-household-clustered-subgroups-v3",
     }

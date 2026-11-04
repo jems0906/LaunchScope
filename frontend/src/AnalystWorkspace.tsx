@@ -200,6 +200,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
           'Synthetic scenario; not evidence about real users or outcomes.',
           'Effect concerns offering the module, not satisfaction, retention, or financial value.',
           'Guardrail nonsignificance does not establish absence of harm.',
+          ...(subgroupQuestion === 'prior_game_engagement' ? ['The prespecified subgroup interaction is not multiplicity-adjusted; interpret its interval directly and do not compare subgroup p-values.'] : []),
         ],
         evidence_references: [simulationRunId, analysisResultId],
       })
@@ -241,6 +242,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
     setInitiativeTitle(initiative.title)
     setBusinessQuestion(initiative.business_question)
     setEligiblePopulation(initiative.eligible_population)
+    setSubgroupQuestion('none')
     setWrongDecisionConsequences(initiative.wrong_decision_consequences)
     setPlanId('')
     setPlanVersion(null)
@@ -328,7 +330,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
               <form className="workspace-form" onSubmit={submitPlan}>
                 <label>Baseline outcome rate (%)<input type="number" min="0.1" max="99" step="0.1" value={baselineRate} onChange={(event) => setBaselineRate(Number(event.target.value))} /></label>
                 <label>Practical threshold (percentage points)<input type="number" min="0.1" max="40" step="0.1" value={targetEffect} onChange={(event) => setTargetEffect(Number(event.target.value))} /></label>
-                <label>Confirmatory subgroup question<select value={subgroupQuestion} onChange={(event) => setSubgroupQuestion(event.target.value as SubgroupQuestion)}><option value="none">None</option><option value="prior_game_engagement">Prior qualified game engagement before assignment</option></select></label>
+                <label>Pre-specified subgroup question<select value={subgroupQuestion} disabled={busy || Boolean(planId)} onChange={(event) => setSubgroupQuestion(event.target.value as SubgroupQuestion)}><option value="none">None</option><option value="prior_game_engagement">Prior qualified game engagement before assignment</option></select></label>
                 <p className="workspace-contract">If selected, subgroup effects and the between-group interaction are reported from this frozen specification.</p>
                 <p className="workspace-contract">Household randomization · 1:1 allocation · 28-day fixed horizon · ITT primary outcome · eligible-session playback guardrail</p>
                 {!planId ? <button className="workspace-button" type="submit" disabled={busy || !initiativeId}><ClipboardCheck size={14} /> Save plan version</button> : (

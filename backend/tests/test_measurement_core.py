@@ -160,6 +160,7 @@ def test_prior_engagement_subgroup_uses_interaction_evidence() -> None:
     result = analyze_dataset(rows, subgroup_question="prior_game_engagement")
     subgroup = result["subgroup_analysis"]
 
+    assert result["analysis_version"] == "itt-newcombe-household-clustered-subgroups-v3"
     assert subgroup["groups"]["no_prior_game_engagement"]["effect"]["estimate"] == 0
     assert subgroup["groups"]["prior_game_engagement"]["effect"]["estimate"] == 0.10
     assert subgroup["interaction"]["estimate"] == 0.10

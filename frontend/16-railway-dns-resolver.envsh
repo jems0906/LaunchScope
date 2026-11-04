@@ -1,0 +1,13 @@
+#!/bin/sh
+
+dns_resolver="$(awk '$1 == "nameserver" { print $2; exit }' /etc/resolv.conf)"
+if [ -z "$dns_resolver" ]; then
+  echo "No DNS resolver configured in /etc/resolv.conf" >&2
+  exit 1
+fi
+
+case "$dns_resolver" in
+  *:*) dns_resolver="[$dns_resolver]" ;;
+esac
+
+export DNS_RESOLVER="$dns_resolver"
