@@ -4,6 +4,8 @@ LaunchScope turns the fictional stakeholder question “Did this initiative succ
 
 This is an educational portfolio blueprint using one fictional initiative: offering a game-discovery module to eligible households. It does not represent Netflix methodology, internal systems, or actual business outcomes. All scenario data are synthetic.
 
+For a concise portfolio walkthrough, see the [LaunchScope case study](docs/portfolio-case-study.md). The [live demo](https://frontend-production-2b4c.up.railway.app/) is public and read-only.
+
 ## Run locally
 
 Docker Compose starts PostgreSQL, applies Alembic migrations before starting FastAPI, and serves the React application:
