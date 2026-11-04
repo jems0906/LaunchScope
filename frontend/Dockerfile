@@ -12,6 +12,6 @@ FROM nginx:1.27-alpine
 ENV NGINX_ENVSUBST_FILTER=^(API_HOST|DNS_RESOLVER)$
 COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --chmod=755 frontend/wait-for-api.sh /docker-entrypoint.d/40-wait-for-api.sh
-COPY frontend/16-railway-dns-resolver.envsh /docker-entrypoint.d/16-railway-dns-resolver.envsh
+COPY --chmod=755 frontend/16-railway-dns-resolver.envsh /docker-entrypoint.d/16-railway-dns-resolver.envsh
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 EXPOSE 80
