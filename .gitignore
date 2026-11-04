@@ -11,3 +11,4 @@ frontend/.vite/
 frontend/test-results/
 frontend/playwright-report/
 backend/.env
+node_modules/

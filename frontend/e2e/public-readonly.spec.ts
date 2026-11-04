@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { waitForApi } from './support'
 
 test.beforeEach(async ({ request }) => {
-  await expect.poll(async () => (await request.get('/api/health')).status()).toBe(200)
+  await waitForApi(request)
 })
 
 test('public demo is readable but workspace data and writes are protected', async ({ page, request }) => {

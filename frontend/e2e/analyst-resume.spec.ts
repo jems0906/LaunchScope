@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { signInAs } from './support'
+import { signInAs, waitForApi } from './support'
 
 test.beforeEach(async ({ request }) => {
-  await expect.poll(async () => (await request.get('/api/health')).status()).toBe(200)
+  await waitForApi(request)
 })
 
 test('analyst creates a frozen evaluation and resumes it after reload', async ({ page }) => {

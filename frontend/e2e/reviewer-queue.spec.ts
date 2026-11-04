@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { createDraftMemoThroughApi, signInAs } from './support'
+import { createDraftMemoThroughApi, signInAs, waitForApi } from './support'
 
 test.beforeEach(async ({ request }) => {
-  await expect.poll(async () => (await request.get('/api/health')).status()).toBe(200)
+  await waitForApi(request)
 })
 
 test('reviewer inspects linked estimates and approves a queued memo', async ({ browser, request }) => {

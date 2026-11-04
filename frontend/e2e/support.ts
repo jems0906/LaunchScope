@@ -6,6 +6,16 @@ export function requiredEnv(name: 'E2E_ANALYST_USERNAME' | 'E2E_ANALYST_PASSWORD
   return value
 }
 
+export async function waitForApi(request: APIRequestContext): Promise<void> {
+  await expect.poll(async () => {
+    try {
+      return (await request.get('/api/health', { timeout: 2000 })).status()
+    } catch {
+      return 0
+    }
+  }, { timeout: 30000 }).toBe(200)
+}
+
 export async function signInAs(page: Page, role: 'analyst' | 'reviewer'): Promise<void> {
   const username = requiredEnv(role === 'analyst' ? 'E2E_ANALYST_USERNAME' : 'E2E_REVIEWER_USERNAME')
   const password = requiredEnv(role === 'analyst' ? 'E2E_ANALYST_PASSWORD' : 'E2E_REVIEWER_PASSWORD')
