@@ -46,6 +46,8 @@ The shared [`measurement_core`](backend/vendor/measurement_core/__init__.py) con
 
 Plan versions are immutable once frozen. Design runs inherit assumptions from the frozen plan. Evaluation data cannot be generated before freeze. Every stored simulation records its plan reference, scenario, seed, generator version, and SHA-256 dataset manifest; analyses and memos reference the frozen plan. Reviewer access is separate from write access.
 
+New plan versions may prespecify one baseline subgroup question: prior qualified game engagement before assignment. When selected, the analysis reports each subgroup's ITT difference and interval, observed and assigned denominators, and the additive risk-difference interaction interval. The demo's original frozen version has no confirmatory subgroup analysis. Do not infer heterogeneity from separate subgroup significance tests.
+
 If randomization is unavailable, do not call an observational comparison an A/B test. Document a different design and assumptions, or select “this design cannot answer the question.” The estimate concerns the effect of offering the module on the specified behavior; it does not establish satisfaction, retention, financial value, or creative quality. There is no universal success score and no automatic release decision.
 
 ## Project map

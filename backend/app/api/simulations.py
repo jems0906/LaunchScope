@@ -10,17 +10,22 @@ from app.models import AnalysisResult, MeasurementPlan, SimulationRun
 from app.schemas import SimulationRunInput
 from app.security import AnalystAccess
 from measurement_core import GENERATOR_VERSION, analyze_dataset, generate_scenario
-from measurement_core.simulation import SCENARIO_CONFIG_VERSION, SCENARIOS
+from measurement_core.simulation import SCENARIO_CONFIG_VERSION, SCENARIOS, SubgroupQuestion
 
 router = APIRouter(prefix="/api", tags=["simulations"])
 SEED_BY_SCENARIO = {"helpful": 1103, "null": 2207, "harmful": 3301, "tradeoff": 4409}
 DEMO_PLAN_ID = "demo-game-discovery-v1"
 
 
-def scenario_summary(scenario: str, seed: int, households_per_arm: int) -> dict[str, object]:
+def scenario_summary(
+    scenario: str,
+    seed: int,
+    households_per_arm: int,
+    subgroup_question: SubgroupQuestion = "none",
+) -> dict[str, object]:
     rows = generate_scenario(scenario, seed=seed, households_per_arm=households_per_arm)
     canonical = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
-    result = analyze_dataset(rows)
+    result = analyze_dataset(rows, subgroup_question=subgroup_question)
     return {
         "scenario": scenario,
         "label": SCENARIOS[scenario]["label"],
@@ -77,7 +82,17 @@ def create_simulation_run(
         raise HTTPException(status_code=404, detail="Plan not found")
     if plan.status != "frozen":
         raise HTTPException(status_code=409, detail="Freeze the plan before generating evaluation data")
-    summary = scenario_summary(payload.scenario, payload.seed, payload.households_per_arm)
+    subgroup_question = (
+        "prior_game_engagement"
+        if plan.specification.get("subgroup_question") == "prior_game_engagement"
+        else "none"
+    )
+    summary = scenario_summary(
+        payload.scenario,
+        payload.seed,
+        payload.households_per_arm,
+        subgroup_question=subgroup_question,
+    )
     summary["plan_reference"] = {"plan_id": plan.id, "version": plan.version, "status": plan.status}
     run = SimulationRun(
         plan_id=plan_id,

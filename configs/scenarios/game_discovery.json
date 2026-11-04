@@ -1,7 +1,8 @@
 {
-  "version": "game-discovery-scenarios-v3",
+  "version": "game-discovery-scenarios-v4",
   "initiative": "Fictional game-discovery module offer",
   "baseline_rate": 0.1,
+  "prior_game_engagement_rate": 0.35,
   "eligible_playback_sessions_mean": 5,
   "playback_risk_concentration": 49,
   "playback_failure_definition": "One documented playback-quality failure event on an eligible playback session.",

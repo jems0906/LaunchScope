@@ -12,7 +12,7 @@ import {
   getWorkspace,
   reviewMemo,
 } from './api'
-import type { Analysis, AuthSession, MemoRecord, MemoReviewDetails, Sensitivity, WorkspaceSnapshot } from './types'
+import type { Analysis, AuthSession, MemoRecord, MemoReviewDetails, Sensitivity, SubgroupAnalysis, SubgroupQuestion, WorkspaceSnapshot } from './types'
 
 type Props = {
   session: AuthSession & { username: string; role: 'analyst' | 'reviewer' }
@@ -25,6 +25,27 @@ const scenarioOptions = [
   { id: 'harmful', label: 'Harmful result' },
   { id: 'tradeoff', label: 'Tradeoff' },
 ]
+
+function subgroupEffectText(group: SubgroupAnalysis['groups']['prior_game_engagement']): string {
+  if (!group?.effect) return 'Not estimable'
+  const { estimate, interval_low, interval_high } = group.effect
+  const rateText = (arm: typeof group.control) => arm.outcome_rate === null
+    ? 'rate unavailable'
+    : `${(arm.outcome_rate * 100).toFixed(1)}% (${arm.qualified_sessions}/${arm.observed} observed; ${arm.assigned} assigned)`
+  return `${(estimate * 100).toFixed(2)} pp · 95% ${(interval_low * 100).toFixed(2)} to ${(interval_high * 100).toFixed(2)} pp · control ${rateText(group.control)} · treatment ${rateText(group.treatment)}`
+}
+
+function SubgroupSummary({ result }: { result?: SubgroupAnalysis | null }) {
+  return <div className="workspace-result subgroup-result">
+    <strong>Prespecified subgroup</strong>
+    {result ? <>
+      <p>No prior qualified game engagement: {subgroupEffectText(result.groups.no_prior_game_engagement)}</p>
+      <p>Prior qualified game engagement: {subgroupEffectText(result.groups.prior_game_engagement)}</p>
+      {result.interaction ? <p>Interaction (prior minus no prior): {(result.interaction.estimate * 100).toFixed(2)} pp · 95% {(result.interaction.interval_low * 100).toFixed(2)} to {(result.interaction.interval_high * 100).toFixed(2)} pp · p = {result.interaction.p_value.toFixed(3)}</p> : <p>{result.unavailable_reason ?? 'Interaction not estimable.'}</p>}
+      <small>Assess subgroup differences using the interaction interval, not separate subgroup significance.</small>
+    </> : <p>No subgroup analysis was prespecified for this frozen plan.</p>}
+  </div>
+}
 
 export default function AnalystWorkspace({ session, csrfToken }: Props) {
   const [busy, setBusy] = useState(false)
@@ -39,6 +60,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
   const [planStatus, setPlanStatus] = useState<'draft' | 'frozen' | ''>('')
   const [baselineRate, setBaselineRate] = useState(10)
   const [targetEffect, setTargetEffect] = useState(1)
+  const [subgroupQuestion, setSubgroupQuestion] = useState<SubgroupQuestion>('none')
   const [availableHouseholds, setAvailableHouseholds] = useState(10000)
   const [sensitivity, setSensitivity] = useState<Sensitivity | null>(null)
   const [scenario, setScenario] = useState('tradeoff')
@@ -110,6 +132,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
         observation_window_days: 28,
         primary_outcome: 'Proportion of assigned households with at least one qualified game session in days 1-28',
         practical_threshold: target,
+        subgroup_question: subgroupQuestion,
         diagnostics: ['Exposure / assigned households', 'Module interaction / assigned households', 'Repeat engagement / observed households', 'Outcome completeness / assigned households'],
         guardrails: ['Playback failures / eligible playback sessions', 'Stability events / assigned households'],
         baseline_rate: baselineRate / 100,
@@ -245,6 +268,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
     setPlanStatus(plan.status)
     if (typeof specification.baseline_rate === 'number') setBaselineRate(specification.baseline_rate * 100)
     if (typeof specification.target_effect === 'number') setTargetEffect(specification.target_effect * 100)
+    setSubgroupQuestion(specification.subgroup_question === 'prior_game_engagement' ? 'prior_game_engagement' : 'none')
     const design = workspace?.design_runs.find((run) => run.plan_id === plan.id)
     setSensitivity(design?.results ?? null)
     const simulation = workspace?.simulation_runs.find((run) => run.plan_id === plan.id)
@@ -304,6 +328,8 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
               <form className="workspace-form" onSubmit={submitPlan}>
                 <label>Baseline outcome rate (%)<input type="number" min="0.1" max="99" step="0.1" value={baselineRate} onChange={(event) => setBaselineRate(Number(event.target.value))} /></label>
                 <label>Practical threshold (percentage points)<input type="number" min="0.1" max="40" step="0.1" value={targetEffect} onChange={(event) => setTargetEffect(Number(event.target.value))} /></label>
+                <label>Confirmatory subgroup question<select value={subgroupQuestion} onChange={(event) => setSubgroupQuestion(event.target.value as SubgroupQuestion)}><option value="none">None</option><option value="prior_game_engagement">Prior qualified game engagement before assignment</option></select></label>
+                <p className="workspace-contract">If selected, subgroup effects and the between-group interaction are reported from this frozen specification.</p>
                 <p className="workspace-contract">Household randomization · 1:1 allocation · 28-day fixed horizon · ITT primary outcome · eligible-session playback guardrail</p>
                 {!planId ? <button className="workspace-button" type="submit" disabled={busy || !initiativeId}><ClipboardCheck size={14} /> Save plan version</button> : (
                   <div className="workspace-actions">
@@ -325,7 +351,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
                 {sensitivity && <div className="workspace-result"><strong>{sensitivity.required_total.toLocaleString()}</strong> required · {sensitivity.effective_total.toLocaleString()} effective · detectable {sensitivity.detectable_effect_achievable ? `${(sensitivity.detectable_effect * 100).toFixed(2)} pp` : 'not attainable'}</div>}
                 <label>Fixed synthetic scenario<select value={scenario} onChange={(event) => setScenario(event.target.value)}>{scenarioOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
                 <button className="workspace-button" type="button" onClick={runScenario} disabled={busy || planStatus !== 'frozen'}><Play size={14} /> Generate & analyze scenario</button>
-                {analysis && <div className="workspace-result"><strong>{(analysis.primary.estimate * 100).toFixed(2)} pp</strong> primary difference · playback {((analysis.guardrails.playback_quality.difference) * 100).toFixed(2)} pp</div>}
+                {analysis && <><div className="workspace-result"><strong>{(analysis.primary.estimate * 100).toFixed(2)} pp</strong> primary difference · playback {((analysis.guardrails.playback_quality.difference) * 100).toFixed(2)} pp</div><SubgroupSummary result={analysis.subgroup_analysis} /></>}
               </div>
             </section>
 
@@ -347,7 +373,7 @@ export default function AnalystWorkspace({ session, csrfToken }: Props) {
             <label>Draft memo ID<input value={memoId} onChange={(event) => setMemoId(event.target.value)} minLength={8} required /></label>
             <button className="workspace-button secondary-button" type="submit" disabled={busy || !memoId.trim()}><ClipboardCheck size={14} /> Load evidence</button>
           </form>
-          {reviewDetails && <div className="review-evidence"><div className="review-evidence-head"><strong>Memo {reviewDetails.id}</strong><span className={reviewDetails.review_state === 'reviewed' ? 'reviewed-tag' : 'draft-tag'}>{reviewDetails.review_state}</span></div><p><span>Recommendation</span>{reviewDetails.recommendation.replaceAll('_', ' ')}</p><p><span>Rationale</span>{reviewDetails.rationale}</p><p><span>Primary ITT</span>{reviewDetails.results ? `${(reviewDetails.results.primary.estimate * 100).toFixed(2)} pp · 95% ${(reviewDetails.results.primary.interval_low * 100).toFixed(2)} to ${(reviewDetails.results.primary.interval_high * 100).toFixed(2)} pp` : 'Unavailable'}</p><p><span>Playback guardrail</span>{reviewDetails.results ? `${(reviewDetails.results.guardrails.playback_quality.difference * 100).toFixed(2)} pp · 95% ${(reviewDetails.results.guardrails.playback_quality.interval_low * 100).toFixed(2)} to ${(reviewDetails.results.guardrails.playback_quality.interval_high * 100).toFixed(2)} pp` : 'Unavailable'}</p><p><span>Limitations</span>{reviewDetails.limitations.join(' ')}</p><p><span>Evidence IDs</span>{reviewDetails.evidence_references.join(' · ')}</p><form onSubmit={submitReview}><button className="workspace-button freeze-button" type="submit" disabled={busy || reviewDetails.review_state !== 'draft'}><Check size={14} /> Mark reviewed</button></form></div>}
+          {reviewDetails && <div className="review-evidence"><div className="review-evidence-head"><strong>Memo {reviewDetails.id}</strong><span className={reviewDetails.review_state === 'reviewed' ? 'reviewed-tag' : 'draft-tag'}>{reviewDetails.review_state}</span></div><p><span>Recommendation</span>{reviewDetails.recommendation.replaceAll('_', ' ')}</p><p><span>Rationale</span>{reviewDetails.rationale}</p><p><span>Primary ITT</span>{reviewDetails.results ? `${(reviewDetails.results.primary.estimate * 100).toFixed(2)} pp · 95% ${(reviewDetails.results.primary.interval_low * 100).toFixed(2)} to ${(reviewDetails.results.primary.interval_high * 100).toFixed(2)} pp` : 'Unavailable'}</p><p><span>Playback guardrail</span>{reviewDetails.results ? `${(reviewDetails.results.guardrails.playback_quality.difference * 100).toFixed(2)} pp · 95% ${(reviewDetails.results.guardrails.playback_quality.interval_low * 100).toFixed(2)} to ${(reviewDetails.results.guardrails.playback_quality.interval_high * 100).toFixed(2)} pp` : 'Unavailable'}</p>{reviewDetails.results && <SubgroupSummary result={reviewDetails.results.subgroup_analysis} />}<p><span>Limitations</span>{reviewDetails.limitations.join(' ')}</p><p><span>Evidence IDs</span>{reviewDetails.evidence_references.join(' · ')}</p><form onSubmit={submitReview}><button className="workspace-button freeze-button" type="submit" disabled={busy || reviewDetails.review_state !== 'draft'}><Check size={14} /> Mark reviewed</button></form></div>}
         </section>
       )}
     </section>

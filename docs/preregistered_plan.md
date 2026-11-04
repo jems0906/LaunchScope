@@ -12,7 +12,7 @@
 - **Practical threshold:** +1 percentage point on the primary rate, a stakeholder judgment threshold rather than a universal success score.
 - **Missingness:** Unknown is not zero. Report completeness by arm. Flag a completeness difference of at least 1 percentage point and provide sensitivity analysis before using the result for a decision.
 - **Spillovers:** Assume no material interference across households. Shared accounts, household cross-contamination, or external campaigns can violate this assumption and must be investigated.
-- **Subgroups:** No subgroup claim is confirmatory in this MVP. Any later subgroup analysis must be limited, prespecified, and include interaction evidence and uncertainty.
+- **Subgroups:** Version 1 makes no confirmatory subgroup claim. A new frozen plan version may prespecify no subgroup or one baseline question: prior qualified game engagement before assignment. Report the two subgroup ITT effects and intervals plus the additive risk-difference interaction interval and p-value. Interpret the interaction directly; do not infer heterogeneity because one subgroup is significant and another is not. Do not select subgroups using post-assignment behavior.
 - **Repeated looks:** Fixed 28-day horizon. Do not repeatedly monitor an ordinary fixed-sample test to stop early for a favorable result.
 - **Interpretation:** Causal interpretation depends on valid household randomization, adherence to assignment, stable outcome capture, and limited interference. This estimates the effect of offering the module, not gaming value, satisfaction, retention, financial value, or creative quality.
 

@@ -62,6 +62,7 @@ export async function createDraftMemoThroughApi(request: APIRequestContext, suff
       allocation_treatment: 0.5,
       observation_window_days: 28,
       primary_outcome: 'Assigned-household rate with one qualified session',
+      subgroup_question: 'prior_game_engagement',
       diagnostics: ['Exposure / assigned households', 'Module interaction / assigned households'],
       guardrails: ['Playback failures / eligible playback sessions'],
       baseline_rate: 0.10,

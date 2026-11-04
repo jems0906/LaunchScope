@@ -17,6 +17,7 @@ test('reviewer inspects linked estimates and approves a queued memo', async ({ b
   await queuedMemo.click()
   await expect(page.getByText('Primary ITT', { exact: true })).toBeVisible()
   await expect(page.getByText('Playback guardrail', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Interaction \(prior minus no prior\)/)).toBeVisible()
   await expect(page.getByText(/Synthetic scenario/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Mark reviewed' }).click()

@@ -53,7 +53,9 @@ def authorized_client(monkeypatch: pytest.MonkeyPatch):
         engine.dispose()
 
 
-def create_frozen_plan(client: TestClient) -> tuple[str, str]:
+def create_frozen_plan(
+    client: TestClient, subgroup_question: str = "none"
+) -> tuple[str, str]:
     initiative = client.post(
         "/api/initiatives",
         json={
@@ -81,6 +83,7 @@ def create_frozen_plan(client: TestClient) -> tuple[str, str]:
             "observation_window_days": 28,
             "primary_outcome": "Assigned-household rate with one qualified session",
             "practical_threshold": 0.01,
+            "subgroup_question": subgroup_question,
             "diagnostics": ["Exposure / assigned households", "Interaction / assigned households"],
             "guardrails": ["Playback failure / eligible sessions"],
             "baseline_rate": 0.10,
@@ -194,7 +197,7 @@ def test_demo_scenario_is_fixed_and_reproducible() -> None:
     assert first.status_code == 200
     assert first.json() == second.json()
     assert first.json()["dataset_manifest"]["synthetic"] is True
-    assert first.json()["scenario_config_version"] == "game-discovery-scenarios-v3"
+    assert first.json()["scenario_config_version"] == "game-discovery-scenarios-v4"
     assert first.json()["plan_reference"] == {
         "plan_id": "demo-game-discovery-v1",
         "version": 1,
@@ -221,7 +224,7 @@ def test_public_client_cannot_read_analyst_workspace(monkeypatch: pytest.MonkeyP
 
 
 def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authorized_client: TestClient) -> None:
-    _, plan_id = create_frozen_plan(authorized_client)
+    _, plan_id = create_frozen_plan(authorized_client, subgroup_question="prior_game_engagement")
 
     audit_response = authorized_client.get("/api/workspace")
     audit_events = audit_response.json()["audit_events"]
@@ -250,7 +253,12 @@ def test_frozen_plan_lifecycle_records_design_scenario_and_reviewed_memo(authori
     assert simulation.status_code == 201
     assert simulation.json()["plan_reference"] == {"plan_id": plan_id, "version": 1, "status": "frozen"}
     assert simulation.json()["dataset_manifest"]["synthetic"] is True
-    assert simulation.json()["dataset_manifest"]["scenario_config_version"] == "game-discovery-scenarios-v3"
+    assert simulation.json()["dataset_manifest"]["scenario_config_version"] == "game-discovery-scenarios-v4"
+    subgroup = simulation.json()["result"]["subgroup_analysis"]
+    assert subgroup["question"] == "prior_game_engagement"
+    assert set(subgroup["groups"]) == {"no_prior_game_engagement", "prior_game_engagement"}
+    assert "interval_low" in subgroup["interaction"]
+    assert "interval_high" in subgroup["interaction"]
     simulation_audit = authorized_client.get("/api/workspace").json()["audit_events"]
     assert any(event["action"] == "simulation_run.generated" and event["entity_id"] == simulation.json()["id"] for event in simulation_audit)
     assert any(event["action"] == "analysis_result.created" and event["entity_id"] == simulation.json()["analysis_result_id"] for event in simulation_audit)

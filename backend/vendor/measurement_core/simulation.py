@@ -12,8 +12,9 @@ import numpy as np
 from scipy.stats import norm, t
 from statsmodels.stats.proportion import confint_proportions_2indep
 
-GENERATOR_VERSION = "seeded-household-playback-sessions-v3"
+GENERATOR_VERSION = "seeded-household-playback-sessions-v4"
 ScenarioName = Literal["helpful", "null", "harmful", "tradeoff"]
+SubgroupQuestion = Literal["none", "prior_game_engagement"]
 _CONFIG_PATH = Path(
     os.environ.get(
         "LAUNCHSCOPE_SCENARIO_CONFIG",
@@ -63,12 +64,14 @@ def generate_scenario(
     playback_rate = float(scenario_config["playback_failure_rate"])
     playback_sessions_mean = float(SCENARIO_CONFIG["eligible_playback_sessions_mean"])
     playback_risk_concentration = float(SCENARIO_CONFIG["playback_risk_concentration"])
+    prior_engagement_rate = float(SCENARIO_CONFIG["prior_game_engagement_rate"])
     rows: list[dict[str, int | str | bool | None]] = []
     for arm, outcome_rate, quality_rate in (
         ("control", BASELINE_RATE, CONTROL_PLAYBACK_FAILURE_RATE),
         ("treatment", treatment_rate, playback_rate),
     ):
         outcomes = rng.binomial(1, outcome_rate, households_per_arm)
+        prior_game_engagement = rng.binomial(1, prior_engagement_rate, households_per_arm)
         eligible_playback_sessions = rng.poisson(playback_sessions_mean, households_per_arm)
         household_failure_rates = rng.beta(
             quality_rate * playback_risk_concentration,
@@ -92,6 +95,7 @@ def generate_scenario(
                     "assignment": arm,
                     "observed": observed,
                     "qualified_session": int(outcomes[index]) if observed else None,
+                    "prior_game_engagement": int(prior_game_engagement[index]),
                     "exposed": int(rng.random() < (0.80 if arm == "treatment" else 0.10)),
                     "module_interaction": int(rng.random() < (0.30 if arm == "treatment" else 0.03)),
                     "repeat_engagement": int(outcomes[index] and rng.random() < 0.35) if observed else None,
@@ -228,12 +232,113 @@ def _rate_variance_sqrt(treatment: ArmSummary, control: ArmSummary) -> float:
     )
 
 
+def _subgroup_analysis(
+    rows: list[dict[str, int | str | bool | None]], *, alpha: float
+) -> dict[str, object]:
+    if any(row.get("prior_game_engagement") not in (0, 1) for row in rows):
+        raise ValueError("Prior game engagement subgroup requires a binary pre-assignment value per household")
+
+    groups: dict[str, dict[str, object]] = {}
+    group_effects: dict[str, tuple[float, float, float, int, int]] = {}
+    for group_name, group_value in (
+        ("no_prior_game_engagement", 0),
+        ("prior_game_engagement", 1),
+    ):
+        group_rows = [row for row in rows if row["prior_game_engagement"] == group_value]
+        control = _arm_summary([row for row in group_rows if row["assignment"] == "control"])
+        treatment = _arm_summary([row for row in group_rows if row["assignment"] == "treatment"])
+        if control.observed < 2 or treatment.observed < 2:
+            return {
+                "question": "prior_game_engagement",
+                "label": "Prior qualified game engagement before assignment",
+                "groups": groups,
+                "interaction": None,
+                "unavailable_reason": "Each subgroup needs at least two observed households in both assignment arms.",
+                "warnings": ["Subgroup interaction was not estimable because at least one subgroup arm was too small."],
+            }
+
+        estimate, interval_low, interval_high = _rate_difference_interval(treatment, control, alpha)
+        standard_error = _rate_variance_sqrt(treatment, control)
+        p_value = float(2 * norm.sf(abs(estimate / standard_error))) if standard_error else 1.0
+        group_effects[group_name] = (
+            estimate,
+            float(treatment.outcome_rate),
+            float(control.outcome_rate),
+            treatment.observed,
+            control.observed,
+        )
+        groups[group_name] = {
+            "control": {
+                "assigned": control.assigned,
+                "observed": control.observed,
+                "missing": control.missing,
+                "qualified_sessions": control.qualified_sessions,
+                "outcome_rate": control.outcome_rate,
+            },
+            "treatment": {
+                "assigned": treatment.assigned,
+                "observed": treatment.observed,
+                "missing": treatment.missing,
+                "qualified_sessions": treatment.qualified_sessions,
+                "outcome_rate": treatment.outcome_rate,
+            },
+            "effect": {
+                "estimate": estimate,
+                "interval_low": interval_low,
+                "interval_high": interval_high,
+                "p_value": p_value,
+            },
+        }
+
+    no_prior_effect, no_prior_treatment_rate, no_prior_control_rate, no_prior_treatment_n, no_prior_control_n = group_effects[
+        "no_prior_game_engagement"
+    ]
+    prior_effect, prior_treatment_rate, prior_control_rate, prior_treatment_n, prior_control_n = group_effects[
+        "prior_game_engagement"
+    ]
+    interaction = prior_effect - no_prior_effect
+    interaction_variance = sum(
+        rate * (1 - rate) / count
+        for rate, count in (
+            (no_prior_treatment_rate, no_prior_treatment_n),
+            (no_prior_control_rate, no_prior_control_n),
+            (prior_treatment_rate, prior_treatment_n),
+            (prior_control_rate, prior_control_n),
+        )
+    )
+    interaction_standard_error = float(np.sqrt(interaction_variance))
+    critical_value = float(norm.ppf(1 - alpha / 2))
+    return {
+        "question": "prior_game_engagement",
+        "label": "Prior qualified game engagement before assignment",
+        "groups": groups,
+        "interaction": {
+            "estimate": interaction,
+            "interval_low": interaction - critical_value * interaction_standard_error,
+            "interval_high": interaction + critical_value * interaction_standard_error,
+            "p_value": float(2 * norm.sf(abs(interaction / interaction_standard_error)))
+            if interaction_standard_error
+            else 1.0,
+            "contrast": "Prior-engagement treatment effect minus no-prior-engagement treatment effect",
+            "uncertainty_method": "household-level additive risk-difference interaction with Wald interval",
+        },
+        "warnings": [
+            "Use the interaction interval to assess heterogeneity; separate subgroup p-values do not establish a subgroup difference."
+        ],
+    }
+
+
 def analyze_dataset(
-    rows: list[dict[str, int | str | bool | None]], *, alpha: float = 0.05
+    rows: list[dict[str, int | str | bool | None]],
+    *,
+    alpha: float = 0.05,
+    subgroup_question: SubgroupQuestion = "none",
 ) -> dict[str, object]:
     """Analyze all assigned households; never condition ITT on post-assignment behavior."""
     if not 0 < alpha < 1:
         raise ValueError("alpha must be strictly between 0 and 1")
+    if subgroup_question not in ("none", "prior_game_engagement"):
+        raise ValueError(f"Unsupported prespecified subgroup question: {subgroup_question}")
     control_rows = [row for row in rows if row["assignment"] == "control"]
     treatment_rows = [row for row in rows if row["assignment"] == "treatment"]
     if not control_rows or not treatment_rows:
@@ -269,6 +374,9 @@ def analyze_dataset(
         warnings.append("Outcome missingness differs by at least 1 percentage point between assignment arms; use sensitivity analysis.")
     if playback["exceeds_harm_margin"] or stability["exceeds_harm_margin"]:
         warnings.append("At least one guardrail point estimate exceeds its prespecified harm margin; do not let the primary result conceal it.")
+    subgroup = _subgroup_analysis(rows, alpha=alpha) if subgroup_question == "prior_game_engagement" else None
+    if subgroup and subgroup.get("warnings"):
+        warnings.extend(subgroup["warnings"])
     return {
         "estimand": "Intention-to-treat difference in qualified-session household rates (treatment minus control).",
         "primary": {
@@ -284,6 +392,7 @@ def analyze_dataset(
             "playback_quality": playback,
             "stability": {**stability, "harm_margin": STABILITY_HARM_MARGIN},
         },
+        "subgroup_analysis": subgroup,
         "diagnostics": {
             "completeness_difference_treatment_minus_control": completeness_difference,
             "missing_outcome_sensitivity": missingness_bounds,

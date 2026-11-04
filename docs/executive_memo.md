@@ -12,7 +12,7 @@ Among households eligible before assignment, what is the effect of offering the 
 
 ## Evidence
 
-Report treatment and control assigned counts, observed counts, outcome rates, absolute difference, uncertainty interval, p-value, practical threshold, and the playback-quality and stability guardrail differences and intervals. Report exposure, interaction, repeat engagement, and completeness with denominators. Do not substitute post-assignment clickers for the assigned population.
+Report treatment and control assigned counts, observed counts, outcome rates, absolute difference, uncertainty interval, p-value, practical threshold, and the playback-quality and stability guardrail differences and intervals. Report exposure, interaction, repeat engagement, and completeness with denominators. If the frozen plan prespecified prior game engagement, report the subgroup ITT effects with denominators and intervals plus the interaction interval; do not infer a difference by comparing subgroup p-values. Do not substitute post-assignment clickers for the assigned population.
 
 ## Interpretation and limitations
 

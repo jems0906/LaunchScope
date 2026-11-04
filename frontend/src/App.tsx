@@ -335,7 +335,7 @@ function App() {
             <div className="estimand-card"><span className="estimand-num">03</span><span className="estimand-type">ENGAGEMENT</span><h3>Did households interact or return?</h3><p>Module interaction and repeat engagement, with assignment-based denominators.</p><span className="not-primary">DIAGNOSTIC</span></div>
             <div className="estimand-card boundary-card"><span className="estimand-num">04</span><span className="estimand-type">LONGER-HORIZON VALUE</span><h3>Did satisfaction or retention improve?</h3><p>A 28-day session outcome cannot establish satisfaction, retention, or financial value.</p><span className="boundary-tag">OUTSIDE THIS DESIGN</span></div>
           </div>
-          <div className="causal-boundary"><span className="boundary-symbol">!</span><p><strong>Interpretation boundary</strong> The estimand is the effect of <em>offering</em> the module. Never condition the main comparison on clicking it or launching a game; those are post-assignment behaviors.</p></div>
+          <div className="causal-boundary"><span className="boundary-symbol">!</span><p><strong>Interpretation boundary</strong> The estimand is the effect of <em>offering</em> the module. Never condition the main comparison on clicking it or launching a game; those are post-assignment behaviors. Demo plan V1 has no confirmatory subgroup claim; analysts can prespecify one baseline prior-engagement question in a new version.</p></div>
         </section>
 
         <section id="tree" className="page-section detail-section">

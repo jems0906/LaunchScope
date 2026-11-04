@@ -29,6 +29,7 @@ class PlanSpecification(BaseModel):
     observation_window_days: int = Field(default=28, ge=1, le=90)
     primary_outcome: str = Field(min_length=10, max_length=1000)
     practical_threshold: float = Field(default=0.01, gt=0, lt=0.5)
+    subgroup_question: Literal["none", "prior_game_engagement"] = "none"
     diagnostics: list[str] = Field(min_length=2, max_length=8)
     guardrails: list[str] = Field(min_length=1, max_length=6)
     baseline_rate: float = Field(default=0.10, gt=0, lt=1)

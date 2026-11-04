@@ -36,10 +36,46 @@ export type Guardrail = {
   uncertainty_method?: string
 }
 
+export type SubgroupQuestion = 'none' | 'prior_game_engagement'
+export type SubgroupEffect = {
+  estimate: number
+  interval_low: number
+  interval_high: number
+  p_value: number
+}
+export type SubgroupArm = {
+  assigned: number
+  observed: number
+  missing: number
+  qualified_sessions: number
+  outcome_rate: number | null
+}
+export type SubgroupGroup = {
+  control: SubgroupArm
+  treatment: SubgroupArm
+  effect: SubgroupEffect | null
+}
+export type SubgroupAnalysis = {
+  question: 'prior_game_engagement'
+  label: string
+  groups: Partial<Record<'no_prior_game_engagement' | 'prior_game_engagement', SubgroupGroup>>
+  interaction: {
+    estimate: number
+    interval_low: number
+    interval_high: number
+    p_value: number
+    contrast: string
+    uncertainty_method: string
+  } | null
+  unavailable_reason?: string
+  warnings: string[]
+}
+
 export type Analysis = {
   primary: Difference
   arms: { control: ArmSummary; treatment: ArmSummary }
   guardrails: { playback_quality: Guardrail; stability: Guardrail }
+  subgroup_analysis?: SubgroupAnalysis | null
   diagnostics: {
     completeness_difference_treatment_minus_control: number
     missing_outcome_sensitivity: {

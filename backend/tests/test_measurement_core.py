@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pytest
 from scipy.stats import norm
 from statsmodels.stats.proportion import proportion_confint
 
@@ -114,6 +115,8 @@ def test_scenario_generation_is_reproducible_and_has_fixed_bounds() -> None:
     assert first == second
     assert len(first) == 400
     assert {row["assignment"] for row in first} == {"control", "treatment"}
+    assert {row["prior_game_engagement"] for row in first} <= {0, 1}
+    assert "prior_game_engagement" in first[0]
 
 
 def test_itt_keeps_nonparticipants_in_assignment_denominator() -> None:
@@ -126,6 +129,100 @@ def test_itt_keeps_nonparticipants_in_assignment_denominator() -> None:
     assert result["primary"]["estimate"] < result["primary"]["interval_high"]
     bounds = result["diagnostics"]["missing_outcome_sensitivity"]
     assert bounds["lower"] <= result["primary"]["estimate"] <= bounds["upper"]
+
+
+def test_prior_engagement_subgroup_uses_interaction_evidence() -> None:
+    rows = []
+    for subgroup, arm, outcome_rate in (
+        (0, "control", 0.10),
+        (0, "treatment", 0.10),
+        (1, "control", 0.10),
+        (1, "treatment", 0.20),
+    ):
+        successes = int(outcome_rate * 1000)
+        for index in range(1000):
+            rows.append(
+                {
+                    "household_id": f"{subgroup}-{arm}-{index}",
+                    "assignment": arm,
+                    "observed": True,
+                    "qualified_session": int(index < successes),
+                    "prior_game_engagement": subgroup,
+                    "exposed": 0,
+                    "module_interaction": 0,
+                    "repeat_engagement": 0,
+                    "eligible_playback_sessions": 10,
+                    "playback_failures": 0,
+                    "stability_event": 0,
+                }
+            )
+
+    result = analyze_dataset(rows, subgroup_question="prior_game_engagement")
+    subgroup = result["subgroup_analysis"]
+
+    assert subgroup["groups"]["no_prior_game_engagement"]["effect"]["estimate"] == 0
+    assert subgroup["groups"]["prior_game_engagement"]["effect"]["estimate"] == 0.10
+    assert subgroup["interaction"]["estimate"] == 0.10
+    assert subgroup["interaction"]["interval_low"] > 0
+    assert subgroup["interaction"]["p_value"] < 0.05
+
+
+def test_subgroup_analysis_requires_prespecified_baseline_values() -> None:
+    rows = generate_scenario("null", seed=151, households_per_arm=50)
+    rows[0].pop("prior_game_engagement")
+
+    with pytest.raises(ValueError, match="pre-assignment"):
+        analyze_dataset(rows, subgroup_question="prior_game_engagement")
+
+
+def test_subgroup_analysis_is_absent_when_not_prespecified() -> None:
+    rows = generate_scenario("null", seed=151, households_per_arm=50)
+
+    assert analyze_dataset(rows)["subgroup_analysis"] is None
+
+
+def test_subgroup_interaction_null_frequency_and_interval_coverage_are_bounded() -> None:
+    rng = np.random.default_rng(20261106)
+    trial_count = 250
+    household_count = 500
+    false_positives = 0
+    covered = 0
+
+    for _ in range(trial_count):
+        rows = []
+        for arm in ("control", "treatment"):
+            prior_engagement = rng.binomial(1, 0.35, household_count)
+            outcomes = rng.binomial(1, 0.10, household_count)
+            rows.extend(
+                {
+                    "household_id": f"{arm}-{index}",
+                    "assignment": arm,
+                    "observed": True,
+                    "qualified_session": int(outcomes[index]),
+                    "prior_game_engagement": int(prior_engagement[index]),
+                    "exposed": 0,
+                    "module_interaction": 0,
+                    "repeat_engagement": 0,
+                    "eligible_playback_sessions": 10,
+                    "playback_failures": 0,
+                    "stability_event": 0,
+                }
+                for index in range(household_count)
+            )
+
+        interaction = analyze_dataset(
+            rows, subgroup_question="prior_game_engagement"
+        )["subgroup_analysis"]["interaction"]
+        false_positives += interaction["p_value"] < 0.05
+        covered += interaction["interval_low"] <= 0 <= interaction["interval_high"]
+
+    false_positive_bounds = proportion_confint(false_positives, trial_count, method="wilson")
+    coverage_bounds = proportion_confint(covered, trial_count, method="wilson")
+
+    assert false_positive_bounds[0] <= 0.05 <= false_positive_bounds[1]
+    assert false_positive_bounds[1] < 0.10
+    assert coverage_bounds[0] <= 0.95 <= coverage_bounds[1]
+    assert coverage_bounds[0] > 0.90
 
 
 def test_differential_missingness_is_warned_and_bounds_are_reported() -> None:

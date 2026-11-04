@@ -14,6 +14,7 @@ test('analyst creates a frozen evaluation and resumes it after reload', async ({
   await page.getByLabel('Initiative title').fill(title)
   await page.getByRole('button', { name: 'Save decision intake' }).click()
   await expect(page.getByText(/Initiative recorded/)).toBeVisible()
+  await page.getByLabel('Confirmatory subgroup question').selectOption('prior_game_engagement')
   await page.getByRole('button', { name: 'Save plan version' }).click()
   await expect(page.getByText('Plan v1 saved as a draft.')).toBeVisible()
   await page.getByRole('button', { name: 'Freeze plan v1' }).click()
@@ -22,6 +23,7 @@ test('analyst creates a frozen evaluation and resumes it after reload', async ({
   await expect(page.getByText(/Sensitivity result recorded/)).toBeVisible()
   await page.getByRole('button', { name: 'Generate & analyze scenario' }).click()
   await expect(page.getByText(/Synthetic tradeoff evaluation/)).toBeVisible()
+  await expect(page.getByText(/Interaction \(prior minus no prior\)/)).toBeVisible()
 
   await page.getByLabel('Rationale').fill('The primary movement and guardrail tradeoff require redesign and another fixed-horizon evaluation.')
   await page.getByRole('button', { name: 'Save memo draft' }).click()
@@ -34,6 +36,7 @@ test('analyst creates a frozen evaluation and resumes it after reload', async ({
   await expect(savedPlan).toContainText(`${title} · v1 · frozen`)
   await savedPlan.selectOption({ label: `${title} · v1 · frozen` })
   await expect(page.getByText(`Resumed frozen plan v1 for ${title}.`)).toBeVisible()
+  await expect(page.getByLabel('Confirmatory subgroup question')).toHaveValue('prior_game_engagement')
   await expect(page.locator('.workspace-step').nth(2).getByText(/primary difference/)).toBeVisible()
   await expect(page.locator('.audit-trail')).toContainText('simulation run generated')
 })
